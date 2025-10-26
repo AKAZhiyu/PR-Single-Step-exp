@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+
+datasets/
+
+ckpts/
+Teacher_ckpts/
+
+.idea/
+.vscode/
+*.env
+venv/
+env/
