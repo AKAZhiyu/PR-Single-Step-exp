@@ -123,3 +123,42 @@ def ARKD_outer_minimization(teacher, T_nat_logits, student, x_nat, x_adv, y, arg
 
 ############################################ Base ############################################
 
+
+
+############################################ single_step ############################################
+def N_FGSM_adv_generation(model, x_natural, y, optimizer, adv_config):
+    
+    epsilon = adv_config['epsilon']
+    # alpha = adv_config['step_size']
+    # Use the recommended hyperparameter for N-FGSM in the paper    
+    alpha = epsilon  
+    k = 2 * epsilon
+
+    criterion_ce = nn.CrossEntropyLoss()
+    model.eval()
+    
+    eta = k * (torch.rand_like(x_natural).cuda().detach() * 2 - 1)
+    x_aug = x_natural.detach() + eta
+
+    x_aug.requires_grad_()
+    with torch.enable_grad():
+        loss = criterion_ce(model(x_aug), y)
+
+    grad = torch.autograd.grad(loss, [x_aug])[0]
+
+    x_adv = x_aug.detach() + alpha * torch.sign(grad.detach())
+
+    x_adv = torch.clamp(x_adv, 0.0, 1.0).detach()
+    model.train()
+    
+    optimizer.zero_grad()
+
+    return x_adv
+
+def NuAT_adv_generation():
+    pass
+
+
+############################################ single_step ############################################
+
+
