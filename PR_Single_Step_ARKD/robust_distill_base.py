@@ -29,6 +29,13 @@ CUDA_VISIBLE_DEVICES=1 python robust_distill_base.py --dataset cifar10 --teacher
 AdaAD
 CUDA_VISIBLE_DEVICES=1 python robust_distill_base.py --dataset cifar10 --teacher_model WRN28_Swish_Pang22 --student_model Res18 --advloss_type AdaKL --exp_name C10_R18_AdaKL
 
+N_FGSM
+
+
+NuAT
+
+
+
 
 # Teacher_ckpts links:
 https://drive.google.com/file/d/16ChNkterCp17BXv-xxqpfedb4u2_CjjS   as Teacher_C10_Pang2022Robustness_WRN28_10.pt 
@@ -234,6 +241,11 @@ for epoch in range(1,epochs+1):
         elif args.advloss_type == 'KL' or args.advloss_type == 'SE' or args.advloss_type == 'CE':
             x_adv = rslad_adv_generation(student, teacher_logits, train_batch_data, train_batch_labels,
                                         optimizer, adv_config, advloss_type=args.advloss_type)
+        elif args.advloss_type == 'N_FGSM':
+            x_adv = N_FGSM_adv_generation(student, train_batch_data, train_batch_labels, optimizer, adv_config)
+        elif args.advloss_type == 'NuAT':
+            x_adv = NuAT_adv_generation(student, train_batch_data, train_batch_labels, optimizer, adv_config)
+            
         ####################################### Adversary Generation (Start)#######################################
 
         student.train()
