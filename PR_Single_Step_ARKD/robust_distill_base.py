@@ -30,12 +30,10 @@ AdaAD
 CUDA_VISIBLE_DEVICES=1 python robust_distill_base.py --dataset cifar10 --teacher_model WRN28_Swish_Pang22 --student_model Res18 --advloss_type AdaKL --exp_name C10_R18_AdaKL
 
 N_FGSM
-
+CUDA_VISIBLE_DEVICES=1 python robust_distill_base.py --dataset cifar10 --teacher_model WRN28_Swish_Pang22 --student_model Res18 --advloss_type N_FGSM --exp_name C10_R18_N_FGSM
 
 NuAT
-
-
-
+CUDA_VISIBLE_DEVICES=1 python robust_distill_base.py --dataset cifar10 --teacher_model WRN28_Swish_Pang22 --student_model Res18 --advloss_type NuAT --exp_name C10_R18_NuAT
 
 # Teacher_ckpts links:
 https://drive.google.com/file/d/16ChNkterCp17BXv-xxqpfedb4u2_CjjS   as Teacher_C10_Pang2022Robustness_WRN28_10.pt 
