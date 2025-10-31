@@ -209,6 +209,54 @@ def NuAT_adv_generation(model, x_natural, y, optimizer, adv_config):
 
     return x_adv
 
+def NuAT_adaad_adv_generation(model, teacher, x_natural, optimizer, adv_config):
+
+    epsilon = adv_config['epsilon']
+    default_noise_alpha = 4.0 / 255.0
+    noise_alpha = adv_config.get('nuat_noise_alpha', default_noise_alpha)
+    attack_step_size = adv_config.get('nuat_step_size', epsilon)
+    lambda_val = adv_config.get('nuat_lambda', 4.0)
+
+    criterion_kl = nn.KLDivLoss(reduction='sum')
+    model.eval()
+    teacher.eval()
+
+    x_natural_detached = x_natural.detach()
+    batch_size = x_natural_detached.shape[0]
+    
+    delta_init = (torch.bernoulli(torch.ones_like(x_natural_detached) * 0.5) * 2.0 - 1.0) * noise_alpha
+    x_pert = (x_natural_detached + delta_init).clamp(0.0, 1.0)
+    x_pert.requires_grad_(True)
+    with torch.no_grad():
+        logits_natural = model(x_natural_detached)
+    with torch.enable_grad():
+        logits_pert = model(x_pert)
+        teacher_logits_pert = teacher(x_pert)
+        
+        loss_kl = criterion_kl(F.log_softmax(logits_pert, dim=1),
+                               F.softmax(teacher_logits_pert, dim=1))
+        loss_nuc = 0.0
+        if lambda_val > 0:
+            diff_matrix = logits_pert - logits_natural.detach()
+            loss_nuc_raw = torch.norm(diff_matrix, p='nuc')
+            loss_nuc = loss_nuc_raw / batch_size
+
+        loss = loss_kl + lambda_val * loss_nuc
+
+    grad = torch.autograd.grad(loss, [x_pert])[0]
+
+    x_adv_intermediate = x_pert.detach() + attack_step_size * torch.sign(grad.detach())
+    
+    delta = x_adv_intermediate - x_natural_detached
+    delta = torch.clamp(delta, -epsilon, epsilon)
+    
+    x_adv = (x_natural_detached + delta).clamp(0.0, 1.0)
+    x_adv = x_adv.detach()
+    
+    model.train() 
+    optimizer.zero_grad()
+    
+    return x_adv
 
 ############################################ single_step ############################################
 

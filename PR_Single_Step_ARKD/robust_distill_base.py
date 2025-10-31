@@ -11,6 +11,7 @@ import torchvision
 from torchvision import datasets, transforms
 from utils import str2bool,str2float, eval_adv_test_whitebox, Cutout, dkd_loss, clip_bound_compute
 from tqdm import tqdm
+import time
 
 from dataset import Triplet_CIFAR10
 
@@ -34,6 +35,9 @@ CUDA_VISIBLE_DEVICES=1 python robust_distill_base.py --dataset cifar10 --teacher
 
 NuAT
 CUDA_VISIBLE_DEVICES=1 python robust_distill_base.py --dataset cifar10 --teacher_model WRN28_Swish_Pang22 --student_model Res18 --advloss_type NuAT --exp_name C10_R18_NuAT
+
+NuAT_adaad
+CUDA_VISIBLE_DEVICES=7 python robust_distill_base.py --dataset cifar10 --teacher_model WRN28_Swish_Pang22 --student_model Res18 --advloss_type NuAT_AdaAD --exp_name C10_R18_NuAT
 
 # Teacher_ckpts links:
 https://drive.google.com/file/d/16ChNkterCp17BXv-xxqpfedb4u2_CjjS   as Teacher_C10_Pang2022Robustness_WRN28_10.pt 
@@ -233,6 +237,8 @@ for epoch in range(1,epochs+1):
 
         
         ####################################### Adversary Generation (Start)#######################################
+        
+        gen_start_time = time.time()
         if args.advloss_type == 'AdaKL' or args.advloss_type == 'AdaSE':
             x_adv = adaad_adv_generation(student, teacher, train_batch_data, train_batch_labels,
                                         optimizer, adv_config, advloss_type=args.advloss_type)
@@ -243,7 +249,9 @@ for epoch in range(1,epochs+1):
             x_adv = N_FGSM_adv_generation(student, train_batch_data, train_batch_labels, optimizer, adv_config)
         elif args.advloss_type == 'NuAT':
             x_adv = NuAT_adv_generation(student, train_batch_data, train_batch_labels, optimizer, adv_config)
-            
+        elif args.advloss_type == 'NuAT_AdaAD':
+            x_adv = NuAT_adaad_adv_generation(student, teacher, train_batch_data, optimizer, adv_config)
+        gen_end_time = time.time()
         ####################################### Adversary Generation (Start)#######################################
 
         student.train()
@@ -258,6 +266,8 @@ for epoch in range(1,epochs+1):
         
 
         if step % 100 == 0:
+            print('Adversary generation time: {:.4f}s'.format(gen_end_time - gen_start_time))
+            log(log_path, 'Epoch {} Step {} adv gen time {:.4f}s'.format(epoch, step, gen_end_time - gen_start_time))
             print('loss',loss.item())
             log(log_path,'Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, step * len(train_batch_data), len(trainloader.dataset),
