@@ -125,6 +125,54 @@ def ARKD_outer_minimization(teacher, T_nat_logits, student, x_nat, x_adv, y, arg
 
 
 
+############################################ Adv_Regularizer ############################################
+def _l2_norm_batch(v):
+    return (v**2).sum(dim=(1, 2, 3))**0.5
+
+def _get_input_grad_for_align(model, X, y, eps):
+    model_was_training = model.training
+    model.eval()
+
+    eta = (torch.rand_like(X) * 2 - 1) * eps
+    x_eta = (X + eta).detach()
+    x_eta.requires_grad = True
+
+    x_natural_copy = X.detach()
+    x_natural_copy.requires_grad = True
+    
+    with torch.enable_grad():
+        logits_nat = model(x_natural_copy)
+        loss_nat = F.cross_entropy(logits_nat, y)
+        
+        logits_eta = model(x_eta)
+        loss_eta = F.cross_entropy(logits_eta, y)
+
+    grad1 = torch.autograd.grad(loss_nat, x_natural_copy, create_graph=True)[0]
+    grad2 = torch.autograd.grad(loss_eta, x_eta, create_graph=True)[0]
+
+    if model_was_training:
+        model.train()
+        
+    return grad1, grad2
+
+
+
+def grad_align_loss(model, x_natural, y, adv_config):
+    grad1, grad2 = _get_input_grad_for_align(model, x_natural, y, adv_config['epsilon'])
+    B = grad1.shape[0]
+
+    grad1_flat = grad1.view(B, -1)
+    grad2_flat = grad2.view(B, -1)
+    cos = F.cosine_similarity(grad1_flat, grad2_flat, dim=1)
+    return (1.0 - cos.mean())
+
+
+
+############################################ Adv_Regularizer ############################################
+
+
+
+
 ############################################ single_step ############################################
 def N_FGSM_adv_generation(model, x_natural, y, optimizer, adv_config):
     

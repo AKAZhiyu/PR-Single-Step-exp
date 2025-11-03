@@ -63,6 +63,12 @@ parser.add_argument('--teacher_model', type=str, default='WRN28_Swish_Pang22',
                     help='Res18|MNV2|WRN28_Swish_Wang23|WRN28_Swish_Pang22|WRN34|WRN70')
 parser.add_argument('--student_model', type=str, default='Res18',
                     help='Res18|MNV2')
+
+parser.add_argument('--adv_regularizer', type=str, default='none',
+                    help='none|GradAlign')
+parser.add_argument('--grad_align_cos_lambda', type=float, default=0.2,
+                    help='weight for grad align regularizer')
+
 parser.add_argument('--wd', type=str2float, default='5e-4', help='weight decay')
 parser.add_argument('--lr', type=float, default=0.1, help='learning rate')
 parser.add_argument('--epochs', type=int, default=200, help='training epoch')
@@ -252,13 +258,20 @@ for epoch in range(1,epochs+1):
         elif args.advloss_type == 'NuAT_AdaAD':
             x_adv = NuAT_adaad_adv_generation(student, teacher, train_batch_data, optimizer, adv_config)
         gen_end_time = time.time()
-        ####################################### Adversary Generation (Start)#######################################
+        ####################################### Adversary Generation (End)#######################################
 
         student.train()
 
         
         loss = ARKD_outer_minimization(teacher, teacher_logits, student, train_batch_data, x_adv, train_batch_labels, args)
 
+        
+        ## TODO: add adv regularizers
+        if args.adv_regularizer == 'GradAlign':
+            grad_align_loss = grad_align_loss(student, train_batch_data, train_batch_labels, adv_config)
+            loss += args.grad_align_cos_lambda * grad_align_loss
+        
+        
         loss.backward()
         optimizer.step()
         if args.scheduler == 'cyclic':
@@ -326,3 +339,4 @@ with open(results_log_csv_name, 'a') as f:
                                                 'best PGD20 acc (test)',
                                                 best_acc_adv_epoch,
                                                 best_acc_adv))
+    
